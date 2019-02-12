@@ -1,38 +1,63 @@
-import sys
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QDialogButtonBox
-from PyQt5 import uic
+from PyQt5 import QtWidgets, QtGui
+from PyQt5.QtWidgets import QDialog
 from colorpicker import Ui_SelectColor
-
-import resources_rc
+from typing import Tuple, List, Any
+from localtable import local_table
 
 
 class ColorDialog(QtWidgets.QDialog, Ui_SelectColor):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        self.language = 'en'
         self.palitra = QtGui.QPixmap(":/palette/palette.png")
         self.LblColor.show()
         self.TxtColor.setAutoFillBackground(True)
-        self.ColorSlider.valueChanged.connect(self.valuechange)
-        self.BrightnessSlider.valueChanged.connect(self.valuechange)
-        self.SuturationSlider.valueChanged.connect(self.valuechange)
+        self.ColorSlider.valueChanged.connect(self.ValueChange)
+        self.BrightnessSlider.valueChanged.connect(self.ValueChange)
+        self.SuturationSlider.valueChanged.connect(self.ValueChange)
         self.image = self.palitra.toImage()
-        self.SuturationSlider.valueChanged['int'].connect(self.changeBrightnessLabel)
+        self.SuturationSlider.valueChanged['int'].connect(self.ChangeBrightnessLabel)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
         self.rgb = [255, 0, 0]
+        self.LanguageInit()
+
+    def LanguageInit(self):
+        """
+        inits language data
+        :return:
+        """
+        lang = self.language
+        self.setWindowTitle(local_table['Select Color'][lang])
+        if lang != 'en':
+            labels = [self.LblColorSelected, self.LblBrightness, self.LblSaturation]
+            for label in labels:
+                current = label.text().split(':')[0]
+                label.setText(local_table[current][lang]+':')
+            self.LblBrightness.setText(self.LblBrightness.text()+  str(self.SuturationSlider.value()))
+            self.groupBox.setTitle(local_table['Select Color'][lang])
+
 
     def Color(self):
+        """
+        returns color label and rgb parts
+        :return:
+        """
         return self.LblColor.text(), self.rgb
 
-    def setcolor(self, color: str):
+    def SetColor(self, color: str):
+        """
+        get shifted color
+        :param color: color string
+        :return:
+        """
         self.LblColor.setText(color)
         self.mColor = color.split(",")
         self.mColor = [float(x) for x in self.mColor]
 
         # get max value and divide at 255 to get brightness
-        s_color = (max(float(self.mColor[0]),max(self.mColor[1], self.mColor[2]))/255.0)*100.0
+        s_color = (max(float(self.mColor[0]), max(self.mColor[1], self.mColor[2]))/255.0)*100.0
         self.SuturationSlider.setValue(round(s_color))
         self.mColor = [(x * 100)/s_color for x in self.mColor]
 
@@ -46,15 +71,19 @@ class ColorDialog(QtWidgets.QDialog, Ui_SelectColor):
         self.mColor = [x - b_color if i != max_ind else x for (i, x) in enumerate(self.mColor)]
 
         # get color
-        if (round(self.mColor[1]) == 255):
+        if round(self.mColor[1]) == 255:
             h_color = 510 - self.mColor[0] + self.mColor[2]
-        elif (round(self.mColor[2]) == 255):
+        elif round(self.mColor[2]) == 255:
             h_color = 1020 + self.mColor[0] - self.mColor[1]
         else:
-            h_color = (1530 + self.mColor[1] - self.mColor[2])% 1530
+            h_color = (1530 + self.mColor[1] - self.mColor[2]) % 1530
         self.ColorSlider.setValue(h_color)
 
-    def valuechange(self):
+    def ValueChange(self):
+        """
+        change color value
+        :return:
+        """
         hValue = self.ColorSlider.value()
         bValue = self.BrightnessSlider.value()
         sValue = self.SuturationSlider.value()
@@ -63,7 +92,7 @@ class ColorDialog(QtWidgets.QDialog, Ui_SelectColor):
         if hValue < 255:
             Color[0] = 255
             Color[1] = hValue
-        if 254  < hValue < 510:
+        if 254 < hValue < 510:
             Color[0] = 255 - (hValue % 255)
             Color[1] = 255
         if 509 < hValue < 765:
@@ -93,31 +122,39 @@ class ColorDialog(QtWidgets.QDialog, Ui_SelectColor):
         cpix[3] = (cpix[3] * sValue) / 100
 
         # for dinamic
-        self.LblColor.setText('%d, %d, %d' % (Color[0],Color[1],Color[2]))
+        self.LblColor.setText('%d, %d, %d' % (Color[0], Color[1], Color[2]))
         # modified color with shifted palette
         self.TxtColor.setStyleSheet(
             "QWidget{ background-color : rgba(%d, %d, %d, %d)}" % (cpix[0], cpix[1], cpix[2], cpix[3]))
         self.rgb = [cpix[0], cpix[1], cpix[2], cpix[3]]
 
-    def changeBrightnessLabel(self):
+    def ChangeBrightnessLabel(self):
         """
         adds to Brightness label current brightness value
         :return:
         """
         brightness = int(self.SuturationSlider.value())
-        self.LblBrightness.setText("Brightness: %i" % brightness)
+        self.LblBrightness.setText("%s: %i" % (local_table['Brightness'][self.language], brightness))
 
     @staticmethod
-    def getColor(color_main):
+    def getColor(color_main, lang) -> Tuple[Tuple[Any, List[int]], bool]:
+        """
+        gets shifted color
+        :param color_main: color in rgb without shift
+        :param lang: form language
+        :return:
+        """
         dialog = ColorDialog()
-        dialog.setcolor(color_main)
+        dialog.language = lang
+        dialog.LanguageInit()
+        dialog.SetColor(color_main)
         result = dialog.exec_()
         color = dialog.Color()
-        return (color, result == QDialog.Accepted)
+        return color, result == QDialog.Accepted
 
     @staticmethod
-    def getColornoWindow(color_main):
+    def getColornoWindow(color_main: str) -> Tuple[Tuple[Any, List[int]], bool]:
         dialog = ColorDialog()
-        dialog.setcolor(color_main)
+        dialog.SetColor(color_main)
         color = dialog.Color()
         return color, True

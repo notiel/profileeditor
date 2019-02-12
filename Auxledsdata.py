@@ -472,7 +472,7 @@ class Sequencer:
     Sequence: List[Union['Step', 'Repeater']] = field(default_factory=list)
 
     def __str__(self):
-        return "%s (%s LED group)" % (self.Name, self.Group)
+        return "%s (%s)" % (self.Name, self.Group)
 
     def get_steps_names(self) -> List[str]:
         """

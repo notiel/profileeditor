@@ -141,7 +141,7 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         #for led in self.step_leds_brightnesses:
         #    led.valueChanged.connect(self.BrightnessChanged)
         self.LstGroup.itemPressed.connect(self.GroupClicked)
-        self.TrStructure.itemPressed.connect(self.TreeItemChanged)
+        #self.TrStructure.itemPressed.connect(self.TreeItemChanged)
         self.TrStructure.currentItemChanged.connect(self.TreeItemChanged)
 
         for CB in self.leds_combo_list:
@@ -457,11 +457,13 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             label.setTitle(local_table[current][lang])
         for CB in self.step_channels:
             CB.setItemText(0, local_table['None'][lang])
+            CB.setItemText(1, local_table['CopyRed'][lang])
+            CB.setItemText(2, local_table['CopyGreen'][lang])
+            CB.setItemText(3, local_table['CopyBlue'][lang])
         labels_ms = common_labels_ms.copy()
         labels_ms.extend(profile_labels_ms)
         for label in labels_ms:
             current = label.text()[:-5]
-            print(current)
             label.setText(local_table[current][lang] + ', '  + local_table['ms'][lang] + ':')
         for label in labels_s:
             current = label.text()[:-4]
@@ -568,10 +570,12 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.TrStructure.addTopLevelItem(item)
                 for step in seq.Sequence:
                     if isinstance(step, Step):
-                        step_item = StepTreeItem(str(step))
+                        step_descr = Mediator.translate_step(str(step), self.language)
+                        step_item = StepTreeItem(step_descr)
                         item.addChild(step_item)
                     elif isinstance(step, Repeater):
-                        step_item = RepeatTreeItem(str(step))
+                        repeat_descr = Mediator.translate_repeat(str(step), self.language)
+                        step_item = RepeatTreeItem(repeat_descr)
                         item.addChild(step_item)
             self.StepControlsDisable()
             self.RepeatControlDisable()
@@ -739,7 +743,6 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         else:
             self.SequenceControlsDisable()
 
-
     def AddSequencer(self):
         """
         Adds new Sequencer to gui and data
@@ -879,27 +882,31 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         :return:
         """
         current = self.TrStructure.currentItem()
-        name = Step.get_name(current.text(0))
-        self.TxtNewName.setText(name)
-        parent = current.parent()
-        seq_descr = parent.text(0)
-        seq = self.auxdata.get_seq_by_name(Sequencer.get_name(seq_descr))
-        self.TxtStepName.setText('Step'+str(seq.get_max_step_number()+1))
-        index = self.GetItemId(current)
-        brightnesses, wait, smooth = self.auxdata.get_step_info(parent.text(0), index)
-        self.SpinWait.setValue(wait)
-        self.SpinSmooth.setValue(smooth)
-        leds = self.auxdata.get_led_list(parent.text(0))
-        for i in range(len(leds)):
-            if isinstance(brightnesses[i], int):
-                self.step_brightness_dict[leds[i]].setValue(brightnesses[i])
-                self.step_channels_dict[leds[i]].setCurrentText(local_table['None'][self.language])
-            else:
-                self.step_channels_dict[leds[i]].setCurrentText(Mediator.get_color_text(brightnesses[i]))
-        for led in Mediator.leds_list:
-            if led not in leds:
-                self.step_channels_dict[led].setCurrentText(local_table['None'][self.language])
-                self.step_brightness_dict[led].setValue(0)
+        if isinstance(current, StepTreeItem):
+            name = Step.get_name(current.text(0))
+            self.TxtNewName.setText(name)
+            parent = current.parent()
+            seq_descr = parent.text(0)
+            seq = self.auxdata.get_seq_by_name(Sequencer.get_name(seq_descr))
+            self.TxtStepName.setText('Step'+str(seq.get_max_step_number()+1))
+            index = self.GetItemId(current)
+            brightnesses, wait, smooth = self.auxdata.get_step_info(parent.text(0), index)
+            self.SpinWait.setValue(wait)
+            self.SpinSmooth.setValue(smooth)
+            leds = self.auxdata.get_led_list(parent.text(0))
+            for i in range(len(leds)):
+                if isinstance(brightnesses[i], int):
+                    self.step_brightness_dict[leds[i]].setValue(brightnesses[i])
+                    self.step_channels_dict[leds[i]].setCurrentText(local_table['None'][self.language])
+                else:
+                    self.step_channels_dict[leds[i]].setCurrentText(Mediator.get_color_text(brightnesses[i],
+                                                                                            self.language))
+            for led in Mediator.leds_list:
+                if led not in leds:
+                    self.step_channels_dict[led].setCurrentText(local_table['None'][self.language])
+                    self.step_brightness_dict[led].setValue(0)
+        else:
+            print("Wrong type selected")
 
     def LoadRepeatControls(self):
         """
@@ -907,17 +914,20 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         :return:
         """
         current = self.TrStructure.currentItem()
-        id = self.GetItemId(current)
-        repeat_info = self.auxdata.get_repeat_info(current.parent().text(0), id)
-        if repeat_info:
-            self.CBStartrom.setCurrentText(repeat_info[0])
-            if isinstance(repeat_info[1], str) and repeat_info[1].lower() == 'forever':
-                self.CBForever.setChecked(True)
-            elif isinstance(repeat_info[1], int):
-                self.CBForever.setChecked(False)
-                self.SpinCount.setValue(int(repeat_info[1]))
-            else:
-                self.ErrorMessage(local_table['step_count_error'][self.language])
+        if isinstance(current, RepeatTreeItem):
+            index = self.GetItemId(current)
+            repeat_info = self.auxdata.get_repeat_info(current.parent().text(0), index)
+            if repeat_info:
+                self.CBStartrom.setCurrentText(repeat_info[0])
+                if isinstance(repeat_info[1], str) and repeat_info[1].lower() == 'forever':
+                    self.CBForever.setChecked(True)
+                elif isinstance(repeat_info[1], int):
+                    self.CBForever.setChecked(False)
+                    self.SpinCount.setValue(int(repeat_info[1]))
+                else:
+                    self.ErrorMessage(local_table['step_count_error'][self.language])
+        else:
+            print("Wrong type selected!")
 
     def TreeItemChanged(self, current):
         self.BtnAddStep.setEnabled(False)  # for not top-level items sequencer and leds are not available
@@ -932,6 +942,8 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if isinstance(current, StepTreeItem):
             self.BtnDeleteStep.setEnabled(True)
             self.BtnDeleteSeq.setEnabled(False)
+            #print(current.text(0))
+            #print(current.parent().childCount())
             self.LoadStepControls()
             self.ClearRepeatControls()
             self.BtnEditStep.setEnabled(True)
@@ -952,6 +964,7 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def GetItemId(self, item):
         parent = self.TrStructure.invisibleRootItem() if type(item) == SequencerTreeItem else item.parent()
         for i in range(parent.childCount()):
+            #print(parent.child(i).text(0))
             if parent.child(i) == item:
                 return i
 
@@ -959,28 +972,24 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current = self.TrStructure.currentItem()
         name = self.TxtStepName.text()
         brightnesses = list()
-        # for led in Mediator.leds_list:
-        #     if self.step_channels_dict[led].isEnabled() and self.step_channels_dict[led].currentIndex() != 0:
-        #         brightnesses.append(self.step_channels_dict[led].currentText())
-        #     elif self.step_brightness_dict[led].isEnabled():
-        #         brightnesses.append(self.step_brightness_dict[led].value())
-        # wait = self.SpinWait.value()
-        # smooth = self.SpinSmooth.value()
         if isinstance(current, SequencerTreeItem):
             seq_name = current.text(0)
-            for i in range(len(self.auxdata.get_group_by_name(self.auxdata.get_seq_by_name(Sequencer.get_name(seq_name)).Group).Leds)):
+            seq = self.auxdata.get_seq_by_name(Sequencer.get_name(seq_name))
+            for i in range(len(self.auxdata.get_group_by_name(seq.Group).Leds)):
                 brightnesses.append(0)
             step, error = self.auxdata.create_step(seq_name, -1, name, brightnesses, 0, 0)
         else:
             seq_name = current.parent().text(0)
             index = self.GetItemId(current)
-            for i in range(len(self.auxdata.get_group_by_name(self.auxdata.get_seq_by_name(Sequencer.get_name(seq_name)).Group).Leds)):
+            seq = self.auxdata.get_seq_by_name(Sequencer.get_name(seq_name))
+            for i in range(len(self.auxdata.get_group_by_name(seq.Group).Leds)):
                 brightnesses.append(0)
             step, error = self.auxdata.create_step(seq_name, index, name, brightnesses, 0, 0)
         if error:
             self.ErrorMessage(local_table[error][self.language])
             return
-        step_item = StepTreeItem(str(step))
+        step_descr: str = Mediator.translate_step(str(step), self.language)
+        step_item = StepTreeItem(step_descr)
         if isinstance(current, SequencerTreeItem):
             current.addChild(step_item)
         else:
@@ -1008,13 +1017,14 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         brightnesses = list()
         for led in Mediator.leds_list:
             if self.step_channels_dict[led].isEnabled() and self.step_channels_dict[led].currentIndex() != 0:
-                brightnesses.append(self.step_channels_dict[led].currentText())
+                translated_color = self.step_channels_dict[led].currentText()
+                brightnesses.append(Mediator.retranslate_color(translated_color, self.language))
             elif self.step_brightness_dict[led].isEnabled():
                 brightnesses.append(self.step_brightness_dict[led].value())
         wait = self.SpinWait.value()
         smooth = self.SpinSmooth.value()
-        id = self.GetItemId(current)
-        step, old_step, changed = self.auxdata.update_step(seq_name, id, name, brightnesses, wait, smooth)
+        index = self.GetItemId(current)
+        step, old_step, changed = self.auxdata.update_step(seq_name, index, name, brightnesses, wait, smooth)
         if old_step:
             # to do update repeat steps
             self.CBStartrom.clear()
@@ -1023,12 +1033,13 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for name in step_names:
                 self.CBStartrom.addItem(name)
         # edit item in tree
-        current.setText(0, str(step))
+        step_descr: str = Mediator.translate_step(str(step), self.language)
+        current.setText(0, step_descr)
         # update repeat items
         for i in changed:
             item = current.parent().child(i)
             current_text: str = item.text(0)
-            item.setText(0, current_text.replace(old_step, self.TxtStepName.text()))
+            item.setText(0, current_text.replace(old_step, self.TxtNewName.text()))
         # profile is not saved now
         self.saved[0] = False
         self.ChangeTabTitle(auxleds, 0)
@@ -1044,8 +1055,8 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             repeat, error = self.auxdata.add_repeat(current.text(0), -1, startstep, count)
         else:
             parent = current.parent()
-            id = self.GetItemId(current)
-            repeat, error = self.auxdata.add_repeat(parent.text(0), id, startstep, count)
+            index = self.GetItemId(current)
+            repeat, error = self.auxdata.add_repeat(parent.text(0), index, startstep, count)
         if error:
             self.ErrorMessage(local_table[error][self.language])
         else:
@@ -1053,7 +1064,7 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if isinstance(current, SequencerTreeItem):
                 current.addChild(repeat_item)
             else:
-                current.parent().insertChild(id+1, repeat_item)
+                current.parent().insertChild(index+1, repeat_item)
             self.TrStructure.setCurrentItem(repeat_item)
             self.TreeItemChanged(repeat_item)
             self.saved[0] = False
@@ -1067,13 +1078,13 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         """
         current = self.TrStructure.currentItem()
         seq_name: str = current.parent().text(0)
-        id = self.GetItemId(current)
+        index = self.GetItemId(current)
         new_start = self.CBStartrom.currentText()
         if self.CBForever.isChecked():
             new_count = 'Forever'
         else:
             new_count = self.SpinCount.value()
-        repeat, error = self.auxdata.update_repeat(seq_name, id, new_start, new_count)
+        repeat, error = self.auxdata.update_repeat(seq_name, index, new_start, new_count)
         if error:
             self.ErrorMessage(local_table[error][self.language])
             return
@@ -1117,8 +1128,8 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if step_name.lower() in used_repeat_steps:
                 self.ErrorMessage(local_table['stepUsed_error'][self.language])
                 return
-            self.auxdata.delete_step(current_name, seq_name)
             parent.removeChild(current)
+            self.auxdata.delete_step(current_name, seq_name)
             #reload steps for repeat
             used_steps = seq.get_steps_names()
             if not used_steps:
@@ -1141,11 +1152,14 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             parent.removeChild(current)
         # select next step if any, or previous, or none if there are no steps
         if not isinstance(current, SequencerTreeItem):
+            print(parent.childCount())
             if index < parent.childCount():
                 self.TrStructure.setCurrentItem(parent.child(index))
-                self.TreeItemChanged(self.TrStructure.currentItem())
+                #self.TreeItemChanged(self.TrStructure.currentItem())
             elif parent.childCount() > 0:
-                self.TrStructure.setCurrentItem(parent.child(index - 1))
+                # TODO get last element instead of -1
+                last_index = parent.childCount()-1
+                self.TrStructure.setCurrentItem(parent.child(last_index))
             else:
                 # disable step controls
                 self.ClearStepControls()
@@ -1177,11 +1191,13 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for step in seq_old.Sequence:
                 if (isinstance(step, Step)):
                     self.auxdata.create_step(str(seq), -1, step.Name, step.Brightness, step.Smooth, step.Wait)
-                    step_item = StepTreeItem(str(step))
+                    step_descr: str = Mediator.translate_step(str(step), self.language)
+                    step_item = StepTreeItem(step_descr)
                     seq_item.addChild(step_item)
                 elif (isinstance(step, Repeater)):
                     self.auxdata.add_repeat(str(seq), -1,  step.StartingFrom, step.Count)
-                    step_item = RepeatTreeItem(str(step))
+                    repeat_descr = Mediator.translate_repeat(str(step), self.language)
+                    step_item = RepeatTreeItem(repeat_descr)
                     seq_item.addChild(step_item)
 
             self.saved[0] = False
@@ -1206,10 +1222,12 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.CBSeqList.addItem(seq.get_name(str(seq)))
             for step in seq.Sequence:
                 if isinstance(step, Step):
-                    step_item = StepTreeItem(str(step))
+                    step_descr: str = Mediator.translate_step(str(step), self.language)
+                    step_item = StepTreeItem(step_descr)
                     item.addChild(step_item)
                 elif isinstance(step, Repeater):
-                    step_item = RepeatTreeItem(str(step))
+                    repeat_descr: str = Mediator.translate_repeat(str(step), self.language)
+                    step_item = RepeatTreeItem(repeat_descr)
                     item.addChild(step_item)
         self.ClearStepControls()
         self.ClearRepeatControls()
@@ -1639,9 +1657,9 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         color = color_input.text().split(', ')
         color_isvalid = len(color) == 3 and all([col.isdigit() for col in color])
         if color_isvalid:
-            color_data = palitra.ColorDialog.getColor(color_input.text())
+            color_data = palitra.ColorDialog.getColor(color_input.text(), self.language)
         else:
-            color_data = palitra.ColorDialog.getColor("255, 0, 0")
+            color_data = palitra.ColorDialog.getColor("255, 0, 0", self.language)
         if color_data[1]:
             color_input.setText(color_data[0][0])
             color_widget = self.selected_color_dict[color_input]
@@ -1661,7 +1679,7 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         adds color to flaming color list and saves color data to profile
         :return:
         """
-        color_data = palitra.ColorDialog.getColor("255, 0, 0")
+        color_data = palitra.ColorDialog.getColor("255, 0, 0", self.language)
         if color_data[1]:
             self.LstFlamingColor.addItem(color_data[0][0])
             # save to profile adding Blade2 key if Blade2 selected
@@ -1997,7 +2015,7 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def Save(self, save_as: bool):
         index = self.tabWidget.currentIndex()
         if save_as or not self.filename[index]:
-            new_filename = QtWidgets.QFileDialog.getSaveFileName(self, local_table['Save File'][self.language], "")[0]
+            new_filename = QtWidgets.QFileDialog.getSaveFileName(self, local_table['save_file'][self.language], "")[0]
             if new_filename:
                 self.filename[index] = new_filename
             else:

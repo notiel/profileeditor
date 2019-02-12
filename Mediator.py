@@ -4,6 +4,7 @@ import re
 import Auxledsdata
 import Commondata
 import profiledata
+from localtable import local_table
 
 # auxledsdata
 leds_list = ["1", "2", "3", "4", "5", "6", "7", "8"]
@@ -232,14 +233,59 @@ def load_profiles(text: str) -> Tuple[dict, str, str]:
     return profiles.load_data_from_text(text)
 
 
-def get_color_text(text: str) -> str:
+def get_color_text(text: str, lang: str) -> str:
     """
     select correct color
     :param text: user color
+    :param lang: str
     :return: correct color
     """
     colors = ['CopyRed', 'CopyBlue', 'CopyGreen']
     for color in colors:
         if text.lower() == color.lower():
+            return local_table[color][lang]
+    return ""
+
+
+def translate_step(text: str, lang: str) -> str:
+    """
+    translates step description
+    :param text: step description
+    :param lang: language
+    :return: new description
+    """
+    for word in ('Smooth:', 'Wait:'):
+        text = text.replace(word, local_table[word[:-1]][lang]+":")
+    i_left = text.index('[')
+    i_right = text.index(']')
+    colors = text[i_left+1:i_right].split(', ')
+    for color in colors:
+        for real_color in ('CopyRed', 'CopyBlue', 'CopyGreen'):
+            if real_color.lower() == color.lower():
+                text = text.replace(color, local_table[real_color][lang])
+    return text
+
+def translate_repeat(text: str, lang: str) -> str:
+    """
+    translates step description
+    :param text: step description
+    :param lang: language
+    :return: new description
+    """
+    text = text.replace("Repeat(", local_table['Repeat'][lang]+ '(')
+    text = text.replace('Count: forever', local_table['Count'][lang] + ': ' + local_table['Forever'][lang])
+    for word in ('StartFrom:', 'Count:'):
+        text = text.replace(word, local_table[word[:-1]][lang]+':')
+    return text
+
+def retranslate_color(text: str, lang: str) -> str:
+    """
+    gets translation of color to english
+    :param text: translated color
+    :param lang: language of translation
+    :return: color in english
+    """
+    for color in ['CopyRed', 'CopyGreen', 'CopyBlue']:
+        if local_table[color][lang] == text:
             return color
     return ""
