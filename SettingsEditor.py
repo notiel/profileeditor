@@ -67,7 +67,7 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.auxdata = AuxEffects()
         self.commondata = CommonData()
         self.profiledata = Profiles()
-        self.language = "ru"
+        self.language = "jp"
         self.data = [self.auxdata, self.commondata, self.profiledata]
         self.saved = [True, True, True]
         self.filename = ["", "", ""]
@@ -80,7 +80,7 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.CommonUI()
         self.ProfileUI()
         if self.language in ['ru', 'jp']:
-            self.LanguangeInit()
+            self.LanguageInit()
 
         # add menu triggers
         self.actionExit.triggered.connect(self.close)
@@ -383,7 +383,7 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             except Exception:
                 self.statusfields[2].setText("%s %s...\n" % (local_table['file_not_loaded'][self.language], filename))
 
-    def LanguangeInit(self):
+    def LanguageInit(self):
         lang = self.language
         aux_labels = [self.LblGroup, self.LblGroupName, self.LblLeds, self.LblLED1, self.LblLED2, self.LblLED3,
                       self.LblLED4, self.LblLed5, self.LblLED6, self.LblLED7, self.LblLED8,
@@ -469,8 +469,8 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             current = label.text()[:-4]
             label.setText(local_table[current][lang] + ', ' + local_table['s'][lang] + ':')
         if self.language != 'ru':
-            self.BtnCReateAux.setText(
-                local_table['Add Effect to @@@'][lang][:-3] + local_table['PowerOn'][lang])
+            label = local_table['Add Effect to @@@'][lang].replace("@@@", local_table['PowerOn'][lang])
+            self.BtnCReateAux.setText(label)
         else:
             self.BtnCReateAux.setText(
                 local_table['Add Effect to @@@'][lang][:-3] + 'режиму\n«' + local_table['PowerOn'][
@@ -1015,7 +1015,9 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         seq_name = current.parent().text(0)
         name = self.TxtNewName.text()
         brightnesses = list()
-        for led in Mediator.leds_list:
+        led_group = self.auxdata.get_group_by_name(self.auxdata.get_seq_by_name(Sequencer.get_name(seq_name)).Group).Leds
+        for led in led_group:
+        #for led in Mediator.leds_list:
             if self.step_channels_dict[led].isEnabled() and self.step_channels_dict[led].currentIndex() != 0:
                 translated_color = self.step_channels_dict[led].currentText()
                 brightnesses.append(Mediator.retranslate_color(translated_color, self.language))
@@ -1060,7 +1062,8 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if error:
             self.ErrorMessage(local_table[error][self.language])
         else:
-            repeat_item = RepeatTreeItem(str(repeat))
+            repeat_descr = Mediator.translate_repeat(str(repeat), self.language)
+            repeat_item = RepeatTreeItem(repeat_descr)
             if isinstance(current, SequencerTreeItem):
                 current.addChild(repeat_item)
             else:
@@ -1088,7 +1091,7 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if error:
             self.ErrorMessage(local_table[error][self.language])
             return
-        current.setText(0, str(repeat))
+        current.setText(0, Mediator.translate_repeat(str(repeat), self.language))
         self.saved[0] = False
         self.ChangeTabTitle(auxleds, 0)
 
@@ -1335,7 +1338,8 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
         current = self.TabEffects.currentIndex()
         text = tabnames[current]
         if self.language != 'ru':
-            self.BtnCReateAux.setText(local_table['Add Effect to @@@'][self.language][:-3] + local_table[text][self.language])
+            label = local_table['Add Effect to @@@'][self.language].replace("@@@", local_table[text][self.language])
+            self.BtnCReateAux.setText(label)
         else:
             self.BtnCReateAux.setText(
                 local_table['Add Effect to @@@'][self.language][:-3] + 'режиму\n«'+local_table[text][self.language] + '»')
@@ -2100,7 +2104,8 @@ class ProfileEditor(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if "profile" in openfilename.lower():
                 index = 2
             if not self.saved[index]:
-                save_msg = "You have unsaved %s settings. Do you want to save?" % tabnames_global[index]
+                msg = local_table['unsaved_warning'][self.language].split('@@@')
+                save_msg = msg[0] + tabnames_global[i] + msg[1]
                 reply = QMessageBox.question(self, 'Message', save_msg, QMessageBox.Yes, QMessageBox.No)
                 if reply == QMessageBox.Yes:
                     self.SavePressed()

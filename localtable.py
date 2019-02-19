@@ -252,7 +252,7 @@ local_table = {'AuxLEDs': {'en': 'AuxLEDS', 'ru': 'Вспомогательны�
                'Sensitivity\nof Next Swing, %': {'en': 'Sensitivity\nof Next Swing, %',
                                                   'ru': 'Чувствительность\nвторого взмаха, %',
                                                   'jp': '次のスイングの感度％'},
-               'Circle Length': {'en': 'Circle Length', 'ru': 'Длина круга', 'jp': 'サークル範囲、ミリ秒'},
+               'Circle Length': {'en': 'Circle Length', 'ru': 'Длина круга', 'jp': 'サークル範囲、'},
                'Circle Speed': {'en': 'Circle Speed', 'ru': 'Скорость кругового\nвзмаха', 'jp': '円の速度'},
                'Min Semicircle \nBefore Start': {'en': 'Min Semicircle \nBefore Start',
                                                   'ru': 'Мин полукругов\nдо перехода', 'jp': '開始前の最小円'},
