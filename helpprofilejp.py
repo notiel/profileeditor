@@ -23,7 +23,7 @@ class Ui_Help(object):
 
     def retranslateUi(self, Help):
         _translate = QtCore.QCoreApplication.translate
-        Help.setWindowTitle(_translate("Help", "Сommon Settings Help"))
+        Help.setWindowTitle(_translate("Help", "プロファイルエディターヘルプ"))
         self.TxtHelp.setHtml(_translate("Help", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
